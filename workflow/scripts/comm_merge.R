@@ -12,8 +12,6 @@ args <- commandArgs(TRUE)
 # 	)
 # 
 
-cat(args, sep="\n", file=stdout())
-
 # INPUT
 INPUT_pvalues<- strsplit(args[1], split=",")[[1]]
 INPUT_means <- strsplit(args[2], split=",")[[1]]
@@ -45,7 +43,6 @@ for(i in setdiff(ls(), "args")) {
 
 ### Load libraries
 library("reshape2")
-library("dplyr")
 
 ###------Functions
 RMduplicated.id_cp_interactions <- function(df) {
@@ -129,6 +126,8 @@ for(sidx in SIDX) {
 	#-- Reformat 3: tidy
 	pval2 <- reshape2::melt(as.matrix(pval))
 	colnames(pval2) <- c("id_cp_interaction", "cell_pair", "Pvalue")
+	#NOTE: Multiple testing correction BH
+	pval2$AdjPvalue <- p.adjust(pval2$Pvalue, method="fdr")
 	pval2$key <- paste0(pval2$id_cp_interaction, "::", pval2$cell_pair)
 
 	avg2 <- reshape2::melt(as.matrix(avg))
@@ -136,6 +135,7 @@ for(sidx in SIDX) {
 	avg2$key <- paste0(avg2$id_cp_interaction, "::", avg2$cell_pair)
 
 	rnk2 <- rnk
+	colnames(rnk2) <- "Rank"
 	rnk2$id_cp_interaction <- rownames(rnk)
 
 	res <- merge(pval2, avg2[, 3:4], by= c("key", "key"), all=TRUE)
@@ -161,15 +161,4 @@ if(!dir.exists(OUTDIR))
 
 write.table(OUT, file=OUTPUT, sep="\t", 
 	    row.names=FALSE, col.names=TRUE, quote=FALSE)
-
-
-# Future combination of stats
-# xx <- OUT %>% select(id_cp_interaction, cell_pair, Pvalue, Mean) %>% 
-# 	group_by(id_cp_interaction, cell_pair) %>%
-# 	summarise(combinedPval=mean(Pvalue), combinedMean=mean(Mean), n=n())
-# 
-# xx$Adj.Pval <- p.adjust(xx$combinedPval, method="fdr")
-# 
-# xx %>% filter(Adj.Pval< 0.05) %>% nrow()
-
 
