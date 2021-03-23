@@ -1,0 +1,7 @@
+---
+QC_cutoff:
+        MAX_percMT:    0.12
+        MIN_nCells:    3
+        MIN_nFeatures: 2000
+        MAX_nFeatures: 99999999
+...
