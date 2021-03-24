@@ -67,13 +67,24 @@ colDat$Annotation.Level.1 <- gsub("^(AA_|CA_)", "", colDat$cell_type)
 # NOTE: BUG, missing vals
 abbn <- read.table(INPUT_colData2, sep=",", header=FALSE, stringsAsFactors=FALSE)
 abbn <- setNames(abbn$V1, abbn$V2)
-colDat$DESC_Annotation.Level.1 <- abbn[colDat$Annotation.Level.1]
+names(abbn)[which(names(abbn)=="LY-EC")] <- "LY_EC"
+abbn <- c(abbn, "ILC"="innate lymphoid cells")
+colDat$DESC_Annotation.Level.1 <- abbn[gsub("[0-9]+$","", colDat$Annotation.Level.1)]
 rownames(colDat) <- colDat$CellName
+colDat$CD31 <- gsub("^(AA|CA)", "", colDat$Region)
+colDat$Region <- gsub("(p|n)$", "", colDat$Region)
 
 # Matrix
 dat <- read.table(INPUT_mtx, sep="\t", header=TRUE, stringsAsFactors=FALSE)
 
 # Row Data (retrieve from matrix)
+#NOTE: there are some symbols annotated with '_' as 'primate_human'. We keep human ones
+gene_idx <- grep("_", rownames(dat))
+#NOTE: this leads to dups rownames, just maskthem
+# rownames(dat)[gene_idx] <- unlist(sapply(rownames(dat)[gene_idx], function(z) strsplit(z, split="_")[[1]][2]))
+cat("[WARN] : Some genes are annotated as '_' with 'primate_human' match, but these are duplicated. n=",length(gene_idx),
+    ". We just mask them with dot instead of underscore.\n", file=stdout())
+rownames(dat) <- gsub("_", ".", rownames(dat))
 rowDat <- data.frame("hgnc_symbol"=rownames(dat))
 
 ## Subset to presence
