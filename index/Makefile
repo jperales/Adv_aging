@@ -22,7 +22,7 @@ samples: samples1 samples2
 
 samples1: $(SIDX1)
 
-Samples/CA_%.yaml: ../data/SampleMetadata/%.yaml ../settings/RNA_QC.yaml ../settings/RNA_seurat.yaml Samples
+Samples/CA_%.yaml: ../data/SampleMetadata/%.yaml ../settings/QC.yaml ../settings/seurat.yaml Samples
 	@echo Creating $@
 	@grep -v "^\.\.\." $< > $@ 
 	@grep -Ev "^(\.\.\.|---)" $(word 2, $^) >> $@ 
@@ -31,7 +31,7 @@ Samples/CA_%.yaml: ../data/SampleMetadata/%.yaml ../settings/RNA_QC.yaml ../sett
 
 samples2: $(SIDX2)
 
-Samples/AA_%.yaml: ../data/SampleMetadata/%.yaml ../settings/RNA_QC.yaml ../settings/RNA_seurat.yaml Samples
+Samples/AA_%.yaml: ../data/SampleMetadata/%.yaml ../settings/QC.yaml ../settings/seurat.yaml Samples
 	@echo Creating $@
 	@grep -v "^\.\.\." $< > $@ 
 	@grep -Ev "^(\.\.\.|---)" $(word 2, $^) >> $@ 
@@ -47,10 +47,11 @@ contrasts: $(CIDX)
 
 comma:=$(shell echo ", ")
 
-Contrasts/%.yaml: ../settings/RNA_seurat.yaml Contrasts
+Contrasts/%.yaml: ../settings/seurat.yaml Contrasts
 	@echo Creating $@
 	@echo "---" > $@
 	@echo 'groups: [$(subst -,$(comma),$*)]' >> $@
+	@echo 'annotation: Annotation.Level.1' >> $@
 	@grep -Ev "^(\.\.\.|---)" $< >> $@ 
 	@echo "..." >> $@
 
@@ -65,6 +66,7 @@ Groups/%.yaml: $(YAML) Groups
 	@echo Creating $@
 	@echo "---" > $@
 	@echo 'samples: [$(shell grep -r -B 2 "biotype.*$*" ../data/SampleMetadata/ | grep "id" | sed -e "s/.*: *//g" | awk '{if(NR==1) c=$$0; else c=c", "$$0}END{print c;}')]' >> $@
+	@echo 'annotation: Annotation.Level.1' >> $@
 	@echo "..." >> $@
 
 Groups:
