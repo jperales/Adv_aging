@@ -1,0 +1,8 @@
+channels:
+ - conda-forge
+ - r
+ - bioconda
+dependencies:
+ - r-base=4.0
+ - r-statmod
+ - bioconductor-edger

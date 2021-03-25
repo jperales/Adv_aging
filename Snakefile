@@ -4,6 +4,8 @@ import os.path
 import re
 import glob
 import yaml
+import pandas as pd
+import numpy as np
 
 #--- Index
 ### Samples
@@ -14,14 +16,27 @@ SIDS = [re.sub("(AA|CA)_","", os.path.splitext(os.path.basename(k))[0]) for k in
 GROUPS = glob.glob("index/Groups/*.yaml")
 GIDS = [re.sub("RNA_","",os.path.splitext(os.path.basename(k))[0]) for k in GROUPS]
 
+### Contrasts
+CONTRASTS = glob.glob("index/Contrasts/*.yaml")
+CIDS = [os.path.splitext(os.path.basename(k))[0] for k in CONTRASTS]
+
 #--- Functions
+
+#- Index Group
 def samplesFROMgroup(wildcards):
-	yaml_fl = open("index/Groups/"+wildcards.region+"_"+wildcards.gid+".yaml")
+	yaml_fl = open("index/Groups/"+wildcards.gid+".yaml")
 	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
-	samples = parsed_yaml["samples"].values()
+	samples = parsed_yaml["samples"]
 
 	return samples
 
+#- Index Contrast
+def groupsFROMcontrast(wildcards):
+	groups = wildcards.cid.split("-")
+
+	return groups
+
+#- RNA processing
 def RNA_getQCParams(wildcards):
 	yaml_fl = open("index/Samples/"+wildcards.region+"_"+wildcards.id+".yaml")
 	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
@@ -35,30 +50,87 @@ def RNA_getQCParams(wildcards):
 
 	return QC_cutoff
 
-def CPDBpval_FROMgroup(wildcards):
-	yaml_fl = open("index/Groups/"+wildcards.gid+".yaml")
+def sampleBARCODES_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
+	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/barcodes.tsv" for k in samples]
+
+	return fls
+
+def sampleFEATURES_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
+	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/features.tsv" for k in samples]
+
+	return fls
+
+def sampleMTX_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
+	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/matrix.mtx" for k in samples]
+
+	return fls
+
+def groupBARCODES_FROMcontrast(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/data2/Groups/"+k+"/"+wildcards.region+"/barcodes.tsv" for k in groups]
+
+	return fls
+
+def groupFEATURES_FROMcontrast(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/data2/Groups/"+k+"/"+wildcards.region+"/features.tsv" for k in groups]
+
+	return fls
+
+def groupMTX_FROMcontrast(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/data2/Groups/"+k+"/"+wildcards.region+"/matrix.mtx" for k in groups]
+
+	return fls
+
+def getAnn_FROMcontrast(wildcards):
+	yaml_fl = open("index/Contrasts/"+wildcards.cid+".yaml")
 	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
-	samples = parsed_yaml["samples"]
+	ann = parsed_yaml["annotation"]
+
+	return ann
+
+def celltypes_FROMcontrast(wildcards):
+	colData = pd.read_csv("out/data2/Contrasts/"+wildcards.cid+"/"+wildcards.region+"/barcodes.tsv", sep="\t")
+	ann = getAnn_FROMcontrast(wildcards)
+	clust = colData[ann].unique().tolist()
+	return clust
+
+#- CellPhoneDB
+def CPDBpval_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
 	fls = ["out/comm/Samples/"+k+"/"+wildcards.region+"/pvalues.txt" for k in samples]
 
 	return fls
 
 def CPDBmean_FROMgroup(wildcards):
-	yaml_fl = open("index/Groups/"+wildcards.gid+".yaml")
-	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
-	samples = parsed_yaml["samples"]
+	samples = samplesFROMgroup(wildcards)
 	fls = ["out/comm/Samples/"+k+"/"+wildcards.region+"/means.txt" for k in samples]
 
 	return fls
 
 def CPDBsignif_FROMgroup(wildcards):
-	yaml_fl = open("index/Groups/"+wildcards.gid+".yaml")
-	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
-	samples = parsed_yaml["samples"]
+	samples = samplesFROMgroup(wildcards)
 	fls = ["out/comm/Samples/"+k+"/"+wildcards.region+"/significant_means.txt" for k in samples]
 
 	return fls
 
+# def pbMTX_FROMcontrast(CIDX):
+# 	region = ["AA", "CA"]
+# 	suffix = ["counts.tsv", "targets.tsv"]
+# 	fls = []
+# 	for k in CIDX:
+# 		for j in region:
+# 			dic1 = {"cid" : k, "region" : j}
+# 			celltypes = celltypes_FROMcontrast(dic1)
+# 			flsx = ["out/minibulk/"+k+"/"+j+"/"+cl for cl in celltypes]
+# 			for fl in flsx:
+# 				fls.append(fl)
+# 	
+# 	return fls
 
 
 
@@ -72,10 +144,26 @@ rule all:
 		expand("out/norm/Samples/{id}/{region}/logNormSCT{ext}", id=SIDS, region=["AA", "CA"], ext=["_matrix.mtx", "_barcodes.tsv", "_features.tsv"]),
 		expand("out/comm/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
 		expand("out/comm/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
-		expand("out/comm/Groups/{gid}/{region}/merged.tsv", gid=GIDS, region=["AA", "CA"])
+		expand("out/comm/Groups/{gid}/{region}/merged.tsv", gid=GIDS, region=["AA", "CA"]),
+		expand("out/comm/Groups/{gid}/{region}/combined.tsv", gid=GIDS, region=["AA", "CA"]),
+		expand("out/data2/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
+		expand("out/data2/Contrasts/{cid}/{region}/{fl}", cid=CIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
+		dynamic(
+			expand("out/minibulk/Contrasts/{cid}/{region}/{{cluster}}_{suffix}",
+				cid=CIDS,
+				region=["AA", "CA"],
+				suffix=["counts.tsv", "samples.tsv"]
+			)
+		),
+		dynamic(
+			expand("out/minidge/Contrasts/{cid}/{region}/{{cluster}}_topTags.tsv",
+				cid=CIDS,
+				region=["AA", "CA"]
+			)
+		)
 
 ### Data process - hence data2
-rule RNA_data_process:
+rule RNA_data2_process:
 	input:
 		src = ["workflow/scripts/data_process.R"],
 		fls = expand("data/GSE117715/{fl}", fl=["CellType_info.csv", "CellType_abbn.csv", "GSE117715_Cynomolgus_monkey_aging_artery_count.txt.gz"])
@@ -94,6 +182,64 @@ rule RNA_data_process:
 	shell:
 		"Rscript --vanilla "
 		"{input.src[0]} {input.fls} {params.ID} {params.REG} {params.QC_cutoff} {output.mtx} {output.rptQC}"
+
+rule RNA_data2_merge_group:
+	input:
+		src = ["workflow/scripts/data_merge.R", "workflow/src/10Xmat.R"],
+		barcodes_fls = sampleBARCODES_FROMgroup,
+		features_fls = sampleFEATURES_FROMgroup,
+		mtx_fls = sampleMTX_FROMgroup,
+	output:
+		mtx = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+	params:
+		barcodes = lambda wildcards, input : ",".join(input.barcodes_fls),
+		features = lambda wildcards, input : ",".join(input.features_fls),
+		mtx = lambda wildcards, input : ",".join(input.mtx_fls),
+		GID = lambda wildcards: wildcards.gid,
+		REG = lambda wildcards: wildcards.region
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {params.barcodes} {params.features} {params.mtx} {params.GID} {params.REG} {output.mtx}"
+
+rule RNA_data2_merge_contrast:
+	input:
+		src = ["workflow/scripts/data_merge.R", "workflow/src/10Xmat.R"],
+		barcodes_fls = groupBARCODES_FROMcontrast,
+		features_fls = groupFEATURES_FROMcontrast,
+		mtx_fls = groupMTX_FROMcontrast,
+	output:
+		mtx = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+	params:
+		barcodes = lambda wildcards, input : ",".join(input.barcodes_fls),
+		features = lambda wildcards, input : ",".join(input.features_fls),
+		mtx = lambda wildcards, input : ",".join(input.mtx_fls),
+		CID = lambda wildcards: wildcards.cid,
+		REG = lambda wildcards: wildcards.region
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {params.barcodes} {params.features} {params.mtx} {params.CID} {params.REG} {output.mtx}"
+
+rule RNA_data2_pseudobulk_contrast:
+	input:
+		src = ["workflow/scripts/data_pseudobulk.R", "workflow/src/10Xmat.R"],
+		mtx = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+	output:
+		dynamic("out/minibulk/Contrasts/{cid}/{region}/{cluster}_counts.tsv"),
+		dynamic("out/minibulk/Contrasts/{cid}/{region}/{cluster}_samples.tsv")
+	params:
+		ann = getAnn_FROMcontrast,
+		outdir = lambda wildcards: "out/minibulk/Contrasts/"+wildcards.cid+"/"+wildcards.region+"/"
+	conda:
+		"workflow/envs/osca.yaml"
+	message:
+		"Pseudobulking"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.mtx} {params.ann} {params.outdir}"
 
 ### Normalization
 rule RNA_norm_pooldeconv:
@@ -173,3 +319,35 @@ rule RNA_comm_merge:
 		"Rscript --vanilla "
 		"{input.src} {params.pvals} {params.means} {params.signif} {output.fl}"
 		
+rule RNA_comm_combine:
+	input:
+		src = "workflow/scripts/comm_combine.R",
+		fl = "out/comm/Groups/{gid}/{region}/merged.tsv"
+	output:
+		fl = "out/comm/Groups/{gid}/{region}/combined.tsv"
+#	params:
+#		iterations = lambda wildcards, input : ",".join(input.pval_fls),
+	conda:
+		"workflow/envs/metapval.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src} {input.fl} {output.fl}"
+	
+### pseudobulk testing
+rule RNA_pseudobulk_dge:
+	input:
+		src = "workflow/scripts/dge_pseudobulk.R",
+		cnt = "out/minibulk/Contrasts/{cid}/{region}/{cluster}_counts.tsv",
+		trg = "out/minibulk/Contrasts/{cid}/{region}/{cluster}_samples.tsv"
+	output:
+		"out/minidge/Contrasts/{cid}/{region}/{cluster}_topTags.tsv",
+	params:
+		comparison = lambda wildcards: wildcards.cid
+	conda:
+		"workflow/envs/edger.yaml"
+	message:
+		"Pseudobulking"
+	shell:
+		"Rscript --vanilla "
+		"{input.src} {input.cnt} {input.trg} {params.comparison} {output}"
+
