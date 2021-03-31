@@ -118,6 +118,11 @@ def CPDBsignif_FROMgroup(wildcards):
 
 	return fls
 
+def getINPUT_CrossTalker(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/comm/Groups/"+k+"/"+wildcards.region+"/filtered_corrected.csv" for k in groups]
+	return fls
+
 # def pbMTX_FROMcontrast(CIDX):
 # 	region = ["AA", "CA"]
 # 	suffix = ["counts.tsv", "targets.tsv"]
@@ -144,8 +149,12 @@ rule all:
 		expand("out/norm/Samples/{id}/{region}/logNormSCT{ext}", id=SIDS, region=["AA", "CA"], ext=["_matrix.mtx", "_barcodes.tsv", "_features.tsv"]),
 		expand("out/comm/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
 		expand("out/comm/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
-		expand("out/comm/Groups/{gid}/{region}/merged.tsv", gid=GIDS, region=["AA", "CA"]),
+		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["merged.tsv", "legend.tsv"]),
 		expand("out/comm/Groups/{gid}/{region}/combined.tsv", gid=GIDS, region=["AA", "CA"]),
+		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["combined_significant_means.tsv", "idx2cluster.tsv"]),
+		expand("out/comm/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
+		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
+		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
 		expand("out/data2/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
 		expand("out/data2/Contrasts/{cid}/{region}/{fl}", cid=CIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
 		dynamic(
@@ -308,7 +317,8 @@ rule RNA_comm_merge:
 		mean_fls = CPDBmean_FROMgroup,
 		signif_fls = CPDBsignif_FROMgroup
 	output:
-		fl = "out/comm/Groups/{gid}/{region}/merged.tsv"
+		fls = ["out/comm/Groups/{gid}/{region}/merged.tsv",
+			"out/comm/Groups/{gid}/{region}/legend.tsv"]
 	params:
 		pvals = lambda wildcards, input : ",".join(input.pval_fls),
 		means = lambda wildcards, input : ",".join(input.mean_fls),
@@ -317,7 +327,7 @@ rule RNA_comm_merge:
 		"workflow/envs/melt.yaml"
 	shell:
 		"Rscript --vanilla "
-		"{input.src} {params.pvals} {params.means} {params.signif} {output.fl}"
+		"{input.src} {params.pvals} {params.means} {params.signif} {output.fls}"
 		
 rule RNA_comm_combine:
 	input:
@@ -332,6 +342,54 @@ rule RNA_comm_combine:
 	shell:
 		"Rscript --vanilla "
 		"{input.src} {input.fl} {output.fl}"
+
+rule RNA_comm_combineSignif:
+	input:
+		src = "workflow/scripts/comm_combineSignif.R",
+		fls = ["out/comm/Groups/{gid}/{region}/combined.tsv",
+			"out/comm/Groups/{gid}/{region}/legend.tsv"]
+	output:
+		fls = expand("out/comm/Groups/{{gid}}/{{region}}/{fl}", fl=["combined_significant_means.tsv", "idx2cluster.tsv"])
+	conda:
+		"workflow/envs/melt.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src} {input.fls} {output.fls}"
+
+rule RNA_comm_cpdb2crosstalker:
+	input:
+		src = "workflow/scripts/comm_CPDB2CrossTalker.py",
+		fls = ["out/comm/Groups/{gid}/{region}/combined_significant_means.tsv",
+			"out/comm/Groups/{gid}/{region}/idx2cluster.tsv"]
+	output:
+		fl = "out/comm/Groups/{gid}/{region}/filtered_corrected.csv"
+	conda:
+		"workflow/envs/cpdb.yaml"
+	shell:
+		"python "
+		"{input.src} {input.fls} {output.fl}"
+
+rule RNA_comm_crosstalker:
+	input:
+		src = "workflow/scripts/comm_CrossTalker.R",
+		fls = getINPUT_CrossTalker
+	output:
+		outdir = directory("out/comm/Contrasts/{cid}/{region}/crosstalker/"),
+		reports = expand("out/comm/Contrasts/{{cid}}/{{region}}/crosstalker/{prefix}_{{cid}}_{{region}}.html", prefix=["Single", "Comparative"]),
+		dat = "out/comm/Contrasts/{cid}/{region}/crosstalker/data_{cid}_{region}.rds"
+	params:
+		#suffix = lambda wildcards, output : re.sub("Single_","",os.path.splitext(os.path.basename(output.reports[0]))),
+		suffix = lambda wildcards: wildcards.cid+"_"+wildcards.region,
+		comparison = lambda wildcards: wildcards.cid,
+		fls = lambda wildcards, input : ",".join(input.fls),
+	shell:
+		'set +eu '
+		' && (test -d {output.outdir} || mkdir -p {output.outdir}) '
+		' && . $(conda info --base)/etc/profile.d/conda.sh '
+		' && conda activate envs/crosstalker '
+		" && $CONDA_PREFIX/bin/Rscript --vanilla "
+		"{input.src} {params.fls} {params.comparison} {params.suffix} {output.outdir}"
+
 	
 ### pseudobulk testing
 rule RNA_pseudobulk_dge:

@@ -41,7 +41,7 @@ cPval <- function(p) {
 	} else if(length(p) == 1) {
 		cp <- p
 	}
-	return(p)
+	return(cp)
 }
 
 OUT <- IN %>% select(id_cp_interaction, cell_pair, AdjPvalue, Mean, Rank) %>% 
@@ -49,7 +49,7 @@ OUT <- IN %>% select(id_cp_interaction, cell_pair, AdjPvalue, Mean, Rank) %>%
  	summarise(combinedAdjPval=cPval(AdjPvalue), 
 		   madMean=mad(Mean), 
 		   madRank=mad(Rank), 
-		   nCellPairs=n())
+		   nCellPairs=n()) %>% unique()
  
 # Save data
 if(!dir.exists(OUTDIR)) 

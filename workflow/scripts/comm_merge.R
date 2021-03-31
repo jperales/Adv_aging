@@ -6,11 +6,12 @@
 set.seed(1234)
 args <- commandArgs(TRUE)
 # args <- c(paste(grep("Y.*CA",list.files("out/comm/Samples", pattern = "^pvalues.txt", recursive = TRUE, full.names = TRUE),value=TRUE), collapse=","),
-# 	paste(grep("Y.*CA", list.files("out/comm/Samples", pattern = "^means.txt", recursive = TRUE, full.names = TRUE), value=TRUE), collapse=","),
-# 	paste(grep("Y.*CA", list.files("out/comm/Samples", pattern = "^significant_means.txt", recursive = TRUE, full.names = TRUE), value=TRUE), collapse=","),
-# 	"out/comm/Groups/Y/merged.tsv"
-# 	)
-# 
+#  	paste(grep("Y.*CA", list.files("out/comm/Samples", pattern = "^means.txt", recursive = TRUE, full.names = TRUE), value=TRUE), collapse=","),
+#  	paste(grep("Y.*CA", list.files("out/comm/Samples", pattern = "^significant_means.txt", recursive = TRUE, full.names = TRUE), value=TRUE), collapse=","),
+#  	"out/comm/Groups/Y/merged.tsv",
+# 	"out/comm/Groups/Y/legend.tsv"
+#  	)
+#  
 
 # INPUT
 INPUT_pvalues<- strsplit(args[1], split=",")[[1]]
@@ -20,6 +21,7 @@ INPUT_signif <- strsplit(args[3], split=",")[[1]]
 # ID <- args[4]
 # OUTPUT
 OUTPUT<- args[4]
+LEGEND <- args[5]
 OUTDIR <- dirname(OUTPUT)
 
 ## Sanity check on inputs
@@ -76,6 +78,7 @@ names(INPUT_signif) <- sapply(INPUT_signif, function(fl) basename(dirname(dirnam
 
 
 cpdb_tidy <- setNames(vector("list", length(SIDX)), SIDX)
+cpdb_leg <- setNames(vector("list", length(SIDX)), SIDX)
 
 for(sidx in SIDX) {
 
@@ -147,17 +150,27 @@ for(sidx in SIDX) {
 	res$Sample <- sidx
 	res <- res[, c("Sample", out_cols)]
 
+	cpdb_leg[[sidx]] <- leg
 	cpdb_tidy[[sidx]] <- res
 
 }
 
 
+# Collection of cp_id_interaction legends
+LEG <- do.call("rbind", cpdb_leg)
+rownames(LEG) <- NULL
+LEG <- unique(LEG)
+
+# Tidy results
 OUT <- do.call("rbind", cpdb_tidy)
 rownames(OUT) <- NULL
 
 # Save data
 if(!dir.exists(OUTDIR)) 
 	dir.create(OUTDIR, recursive=TRUE)
+
+write.table(LEG, file=LEGEND, sep="\t", 
+	    row.names=FALSE, col.names=TRUE, quote=FALSE)
 
 write.table(OUT, file=OUTPUT, sep="\t", 
 	    row.names=FALSE, col.names=TRUE, quote=FALSE)
