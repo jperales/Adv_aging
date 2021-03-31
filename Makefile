@@ -1,15 +1,13 @@
 
-.PHONY: settings index
+.PHONY: data settings index
 
-all: settings index
+all: data settings index
 
-# data:
-# 	$(MAKE) -C data download
-# 	$(MAKE) -C data organize 
-# 	$(MAKE) -C data clean 
+data:
+	$(MAKE) -C data download
+	$(MAKE) -C data samples 
 
 settings:
-	$(MAKE) -C settings zhang
 	$(MAKE) -C settings groups.txt
 	$(MAKE) -C settings contrasts.txt
 
