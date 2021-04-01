@@ -62,11 +62,12 @@ Contrasts:
 
 groups: $(GIDX)
 
-Groups/%.yaml: $(YAML) Groups
+Groups/%.yaml: $(YAML) ../settings/seurat.yaml Groups 
 	@echo Creating $@
 	@echo "---" > $@
 	@echo 'samples: [$(shell grep -r -B 2 "biotype.*$*" ../data/SampleMetadata/ | grep "id" | sed -e "s/.*: *//g" | awk '{if(NR==1) c=$$0; else c=c", "$$0}END{print c;}')]' >> $@
 	@echo 'annotation: Annotation.Level.1' >> $@
+	@grep -Ev "^(\.\.\.|---)" $(word 1, $^) >> $@ 
 	@echo "..." >> $@
 
 Groups:

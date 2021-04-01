@@ -8,3 +8,4 @@ dependencies:
  - r-seurat
  - r-sctransform
  - bioconductor-glmGamPoi
+ - bioconductor-PCAtools

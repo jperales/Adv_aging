@@ -50,42 +50,86 @@ def RNA_getQCParams(wildcards):
 
 	return QC_cutoff
 
-def sampleBARCODES_FROMgroup(wildcards):
+def RNA_getSeuratClustParams_FROMgroup(wildcards):
+	yaml_fl = open("index/Groups/"+wildcards.gid+".yaml")
+	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
+	clust = ",".join(str(x) for x in parsed_yaml["res"])
+	return clust 
+
+def sampleUMIBARCODES_FROMgroup(wildcards):
 	samples = samplesFROMgroup(wildcards)
 	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/barcodes.tsv" for k in samples]
 
 	return fls
 
-def sampleFEATURES_FROMgroup(wildcards):
+def sampleUMIFEATURES_FROMgroup(wildcards):
 	samples = samplesFROMgroup(wildcards)
 	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/features.tsv" for k in samples]
 
 	return fls
 
-def sampleMTX_FROMgroup(wildcards):
+def sampleUMIMTX_FROMgroup(wildcards):
 	samples = samplesFROMgroup(wildcards)
 	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/matrix.mtx" for k in samples]
 
 	return fls
 
-def groupBARCODES_FROMcontrast(wildcards):
+def groupUMIBARCODES_FROMcontrast(wildcards):
 	groups = groupsFROMcontrast(wildcards)
 	fls = ["out/data2/Groups/"+k+"/"+wildcards.region+"/barcodes.tsv" for k in groups]
 
 	return fls
 
-def groupFEATURES_FROMcontrast(wildcards):
+def groupUMIFEATURES_FROMcontrast(wildcards):
 	groups = groupsFROMcontrast(wildcards)
 	fls = ["out/data2/Groups/"+k+"/"+wildcards.region+"/features.tsv" for k in groups]
 
 	return fls
 
-def groupMTX_FROMcontrast(wildcards):
+def groupUMIMTX_FROMcontrast(wildcards):
 	groups = groupsFROMcontrast(wildcards)
 	fls = ["out/data2/Groups/"+k+"/"+wildcards.region+"/matrix.mtx" for k in groups]
 
 	return fls
 
+#-- Normalized data
+def sampleNORMBARCODES_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
+	fls = ["out/norm/Samples/"+k+"/"+wildcards.region+"/"+wildcards.prefix+"_barcodes.tsv" for k in samples]
+
+	return fls
+
+def sampleNORMFEATURES_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
+	fls = ["out/norm/Samples/"+k+"/"+wildcards.region+"/"+wildcards.prefix+"_features.tsv" for k in samples]
+
+	return fls
+
+def sampleNORMMTX_FROMgroup(wildcards):
+	samples = samplesFROMgroup(wildcards)
+	fls = ["out/norm/Samples/"+k+"/"+wildcards.region+"/"+wildcards.prefix+"_matrix.mtx" for k in samples]
+
+	return fls
+
+def groupNORMBARCODES_FROMcontrast(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/norm/Groups/"+k+"/"+wildcards.region+"/"+wildcards.prefix+"_barcodes.tsv" for k in groups]
+
+	return fls
+
+def groupNORMFEATURES_FROMcontrast(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/norm/Groups/"+k+"/"+wildcards.region+"/"+wildcards.prefix+"_features.tsv" for k in groups]
+
+	return fls
+
+def groupNORMMTX_FROMcontrast(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/norm/Groups/"+k+"/"+wildcards.region+"/"+wildcards.prefix+"_matrix.mtx" for k in groups]
+
+	return fls
+
+#-- Getting annotation
 def getAnn_FROMcontrast(wildcards):
 	yaml_fl = open("index/Contrasts/"+wildcards.cid+".yaml")
 	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
@@ -147,6 +191,12 @@ rule all:
 		expand("out/data2/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
 		expand("out/norm/Samples/{id}/{region}/logNormCounts{ext}", id=SIDS, region=["AA", "CA"], ext=["_matrix.mtx", "_barcodes.tsv", "_features.tsv"]),
 		expand("out/norm/Samples/{id}/{region}/logNormSCT{ext}", id=SIDS, region=["AA", "CA"], ext=["_matrix.mtx", "_barcodes.tsv", "_features.tsv"]),
+		expand("out/norm/Groups/{gid}/{region}/logNormSCT_{fl}", 
+				gid=GIDS, region=["AA", "CA"],
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx","scaled.tsv", "HGV.txt"]),
+		expand("out/dim/Groups/{gid}/{region}/logNormSCT_PCA_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt", "horn.pdf"]),
+		expand("out/dim/Groups/{gid}/{region}/logNormSCT_harmony_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"]),
+		expand("out/clust/Groups/{gid}/{region}/logNormSCT_harmony_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["GraphNN.rds", "GraphSNN.rds", "Idents.tsv"]),
 		expand("out/comm/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
 		expand("out/comm/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
 		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["merged.tsv", "legend.tsv"]),
@@ -169,7 +219,7 @@ rule all:
 				cid=CIDS,
 				region=["AA", "CA"]
 			)
-		)
+		),
 
 ### Data process - hence data2
 rule RNA_data2_process:
@@ -195,9 +245,9 @@ rule RNA_data2_process:
 rule RNA_data2_merge_group:
 	input:
 		src = ["workflow/scripts/data_merge.R", "workflow/src/10Xmat.R"],
-		barcodes_fls = sampleBARCODES_FROMgroup,
-		features_fls = sampleFEATURES_FROMgroup,
-		mtx_fls = sampleMTX_FROMgroup,
+		barcodes_fls = sampleUMIBARCODES_FROMgroup,
+		features_fls = sampleUMIFEATURES_FROMgroup,
+		mtx_fls = sampleUMIMTX_FROMgroup,
 	output:
 		mtx = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
 	params:
@@ -215,9 +265,9 @@ rule RNA_data2_merge_group:
 rule RNA_data2_merge_contrast:
 	input:
 		src = ["workflow/scripts/data_merge.R", "workflow/src/10Xmat.R"],
-		barcodes_fls = groupBARCODES_FROMcontrast,
-		features_fls = groupFEATURES_FROMcontrast,
-		mtx_fls = groupMTX_FROMcontrast,
+		barcodes_fls = groupUMIBARCODES_FROMcontrast,
+		features_fls = groupUMIFEATURES_FROMcontrast,
+		mtx_fls = groupUMIMTX_FROMcontrast,
 	output:
 		mtx = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
 	params:
@@ -250,6 +300,24 @@ rule RNA_data2_pseudobulk_contrast:
 		"Rscript --vanilla "
 		"{input.src[0]} {input.mtx} {params.ann} {params.outdir}"
 
+### Dimensionality reduction shorten as dim
+rule RNA_dim_pca_group:
+	input:
+		src = ["workflow/scripts/dim_pca_merged.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Groups/{{gid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"])
+	output:
+		fls = expand("out/dim/Groups/{{gid}}/{{region}}/logNormSCT_PCA_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt", "horn.pdf"])
+	params:
+		GID = lambda wildcards: wildcards.gid,
+		REG = lambda wildcards: wildcards.region
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {params.GID} {params.REG} {output.fls}"
+
 ### Normalization
 rule RNA_norm_pooldeconv:
 	input:
@@ -280,6 +348,78 @@ rule RNA_norm_sctransform:
 	shell:
 		"Rscript --vanilla "
 		"{input.src[0]} {input.mtx} {output.fls} {params.ID}"
+
+rule RNA_norm_merge_group:
+	input:
+		src = ["workflow/scripts/norm_merge.R", "workflow/src/10Xmat.R"],
+		mtx = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+		#UMIbarcodes_fls = sampleUMIBARCODES_FROMgroup,
+		#UMIfeatures_fls = sampleUMIFEATURES_FROMgroup,
+		#UMImtx_fls = sampleUMIMTX_FROMgroup,
+		#NORMbarcodes_fls = sampleNORMBARCODES_FROMgroup,
+		#NORMfeatures_fls = sampleNORMFEATURES_FROMgroup,
+		#NORMmtx_fls = sampleNORMMTX_FROMgroup,
+	output:
+		mtx = expand("out/norm/Groups/{{gid}}/{{region}}/logNormSCT_{fl}", fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"])
+	params:
+		#		UMIbarcodes = lambda wildcards, input : ",".join(input.UMIbarcodes_fls),
+		#		UMIfeatures = lambda wildcards, input : ",".join(input.UMIfeatures_fls),
+		#		UMImtx = lambda wildcards, input : ",".join(input.UMImtx_fls),
+		#		NORMbarcodes = lambda wildcards, input : ",".join(input.NORMbarcodes_fls),
+		#		NORMfeatures = lambda wildcards, input : ",".join(input.NORMfeatures_fls),
+		#		NORMmtx = lambda wildcards, input : ",".join(input.NORMmtx_fls),
+		GID = lambda wildcards: wildcards.gid,
+		REG = lambda wildcards: wildcards.region
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} "
+		"{input.mtx} "
+		#"{params.UMIbarcodes} {params.UMIfeatures} {params.UMImtx} "
+		#"{params.NORMbarcodes} {params.NORMfeatures} {params.NORMmtx} "
+		"{params.GID} {params.REG} {output.mtx}"
+
+### Integration
+rule RNA_int_harmony_group:
+	input:
+		src = ["workflow/scripts/int_harmony_group.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Groups/{{gid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+		pca = expand("out/dim/Groups/{{gid}}/{{region}}/logNormSCT_PCA_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
+	output:
+		fls = expand("out/dim/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
+	params:
+		GID = lambda wildcards: wildcards.gid,
+		REG = lambda wildcards: wildcards.region
+	shell:
+		'set +eu '
+		' && . $(conda info --base)/etc/profile.d/conda.sh '
+		' && conda activate envs/harmony '
+		" && $CONDA_PREFIX/bin/Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {input.pca} {params.GID} {params.REG} {output.fls}"
+
+### Clustering
+rule RNA_clust_harmony_group:
+	input:
+		src = ["workflow/scripts/clust_SNN.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Groups/{{gid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+		harmony = expand("out/dim/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
+	output:
+		fls = expand("out/clust/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["GraphNN.rds", "GraphSNN.rds", "Idents.tsv"])
+	params:
+		GID = lambda wildcards: wildcards.gid,
+		REG = lambda wildcards: wildcards.region,
+		res = RNA_getSeuratClustParams_FROMgroup,
+		red = "harmony"
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {input.harmony} {params.GID} {params.REG} {params.res} {params.red} {output.fls}"
 
 ### Communication
 rule RNA_comm_prepare:

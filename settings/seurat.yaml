@@ -1,7 +1,3 @@
 ---
-seurat_clust:
-        MIN_res:       0.1
-        MAX_res:       2.0
-        BY_res:        0.2
-        ACTUAL_res:    1.0
+res: [0.5, 1.0, 1.5]
 ...
