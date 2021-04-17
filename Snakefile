@@ -56,6 +56,12 @@ def RNA_getSeuratClustParams_FROMgroup(wildcards):
 	clust = ",".join(str(x) for x in parsed_yaml["res"])
 	return clust 
 
+def RNA_getSeuratClustParams_FROMcontrast(wildcards):
+	yaml_fl = open("index/Contrasts/"+wildcards.cid+".yaml")
+	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
+	clust = ",".join(str(x) for x in parsed_yaml["res"])
+	return clust 
+
 def sampleUMIBARCODES_FROMgroup(wildcards):
 	samples = samplesFROMgroup(wildcards)
 	fls = ["out/data2/Samples/"+k+"/"+wildcards.region+"/barcodes.tsv" for k in samples]
@@ -137,6 +143,16 @@ def getAnn_FROMcontrast(wildcards):
 
 	return ann
 
+def getAnnFile_FROMsample(wildcards):
+	yaml_fl = open("index/Samples/"+wildcards.region+"_"+wildcards.id+".yaml")
+	parsed_yaml = yaml.load(yaml_fl, Loader=yaml.FullLoader)
+	gr = parsed_yaml["biotype"]
+
+	fl = "out/ann/Groups/"+gr+"/"+wildcards.region+"/"+"logNormSCT_harmony_barcodes.tsv"
+
+	return fl
+
+
 def celltypes_FROMcontrast(wildcards):
 	colData = pd.read_csv("out/data2/Contrasts/"+wildcards.cid+"/"+wildcards.region+"/barcodes.tsv", sep="\t")
 	ann = getAnn_FROMcontrast(wildcards)
@@ -167,6 +183,12 @@ def getINPUT_CrossTalker(wildcards):
 	fls = ["out/comm/Groups/"+k+"/"+wildcards.region+"/filtered_corrected.csv" for k in groups]
 	return fls
 
+def getINPUT2_CrossTalker(wildcards):
+	groups = groupsFROMcontrast(wildcards)
+	fls = ["out/cpdb/Groups/"+k+"/"+wildcards.region+"/filtered_corrected.csv" for k in groups]
+	return fls
+
+
 # def pbMTX_FROMcontrast(CIDX):
 # 	region = ["AA", "CA"]
 # 	suffix = ["counts.tsv", "targets.tsv"]
@@ -189,37 +211,56 @@ def getINPUT_CrossTalker(wildcards):
 rule all:
 	input:
 		expand("out/data2/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
+		expand("out/data2/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
+		expand("out/data2/Contrasts/{cid}/{region}/{fl}", cid=CIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
 		expand("out/norm/Samples/{id}/{region}/logNormCounts{ext}", id=SIDS, region=["AA", "CA"], ext=["_matrix.mtx", "_barcodes.tsv", "_features.tsv"]),
 		expand("out/norm/Samples/{id}/{region}/logNormSCT{ext}", id=SIDS, region=["AA", "CA"], ext=["_matrix.mtx", "_barcodes.tsv", "_features.tsv"]),
 		expand("out/norm/Groups/{gid}/{region}/logNormSCT_{fl}", 
 				gid=GIDS, region=["AA", "CA"],
 				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx","scaled.tsv", "HGV.txt"]),
+		expand("out/norm/Contrasts/{cid}/{region}/logNormSCT_{fl}", 
+				cid=CIDS, region=["AA", "CA"],
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx","scaled.tsv", "HGV.txt"]),
 		expand("out/dim/Groups/{gid}/{region}/logNormSCT_PCA_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt", "horn.pdf"]),
+		expand("out/dim/Contrasts/{cid}/{region}/logNormSCT_PCA_{suffix}", cid=CIDS, region=["AA", "CA"], suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt", "horn.pdf"]),
 		expand("out/dim/Groups/{gid}/{region}/logNormSCT_harmony_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"]),
+		expand("out/dim/Contrasts/{cid}/{region}/logNormSCT_harmony_{suffix}", cid=CIDS, region=["AA", "CA"], suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"]),
 		expand("out/clust/Groups/{gid}/{region}/logNormSCT_harmony_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["GraphNN.rds", "GraphSNN.rds", "Idents.tsv"]),
-		expand("out/comm/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
-		expand("out/comm/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
-		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["merged.tsv", "legend.tsv"]),
-		expand("out/comm/Groups/{gid}/{region}/combined.tsv", gid=GIDS, region=["AA", "CA"]),
-		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["combined_significant_means.tsv", "idx2cluster.tsv"]),
-		expand("out/comm/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
-		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
-		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
-		expand("out/data2/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
-		expand("out/data2/Contrasts/{cid}/{region}/{fl}", cid=CIDS, region=["AA", "CA"], fl=["matrix.mtx", "barcodes.tsv", "features.tsv"]),
-		dynamic(
-			expand("out/minibulk/Contrasts/{cid}/{region}/{{cluster}}_{suffix}",
-				cid=CIDS,
-				region=["AA", "CA"],
-				suffix=["counts.tsv", "samples.tsv"]
-			)
-		),
-		dynamic(
-			expand("out/minidge/Contrasts/{cid}/{region}/{{cluster}}_topTags.tsv",
-				cid=CIDS,
-				region=["AA", "CA"]
-			)
-		),
+		expand("out/clust/Contrasts/{cid}/{region}/logNormSCT_harmony_{suffix}", cid=CIDS, region=["AA", "CA"], suffix=["GraphNN.rds", "GraphSNN.rds", "Idents.tsv"]),
+#		expand("out/ann/Samples/{id}/{region}/logNormSCT_harmony_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["barcodes.tsv"]),
+		expand("out/ann/Groups/{gid}/{region}/logNormSCT_harmony_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["barcodes.tsv", "vis.pdf"]),
+		expand("out/ann/Contrasts/{cid}/{region}/logNormSCT_harmony_{suffix}", cid=CIDS, region=["AA", "CA"], suffix=["barcodes.tsv", "vis.pdf"]),
+#		expand("out/comm/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
+#		expand("out/comm/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
+#		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["merged.tsv", "legend.tsv"]),
+#		expand("out/comm/Groups/{gid}/{region}/combined.tsv", gid=GIDS, region=["AA", "CA"]),
+#		expand("out/comm/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["combined_significant_means.tsv", "idx2cluster.tsv"]),
+#		expand("out/comm/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
+#		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
+#		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
+
+##		expand("out/cpdb/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
+		expand("out/cpdb/Groups/{gid}/{region}/cellphonedb_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
+##		expand("out/cpdb/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
+		expand("out/cpdb/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
+		expand("out/cpdb/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["significant_means.tsv", "idx2cluster.tsv"]),
+		expand("out/cpdb/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
+		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
+		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
+
+#		dynamic(
+#			expand("out/minibulk/Contrasts/{cid}/{region}/{{cluster}}_{suffix}",
+#				cid=CIDS,
+#				region=["AA", "CA"],
+#				suffix=["counts.tsv", "samples.tsv"]
+#			)
+#		),
+#		dynamic(
+#			expand("out/minidge/Contrasts/{cid}/{region}/{{cluster}}_topTags.tsv",
+#				cid=CIDS,
+#				region=["AA", "CA"]
+#			)
+#		),
 
 ### Data process - hence data2
 rule RNA_data2_process:
@@ -318,6 +359,23 @@ rule RNA_dim_pca_group:
 		"Rscript --vanilla "
 		"{input.src[0]} {input.umi} {input.sct} {params.GID} {params.REG} {output.fls}"
 
+rule RNA_dim_pca_contrast:
+	input:
+		src = ["workflow/scripts/dim_pca_merged.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"])
+	output:
+		fls = expand("out/dim/Contrasts/{{cid}}/{{region}}/logNormSCT_PCA_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt", "horn.pdf"])
+	params:
+		GID = lambda wildcards: wildcards.cid,
+		REG = lambda wildcards: wildcards.region
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {params.GID} {params.REG} {output.fls}"
+
 ### Normalization
 rule RNA_norm_pooldeconv:
 	input:
@@ -368,7 +426,7 @@ rule RNA_norm_merge_group:
 		#		NORMbarcodes = lambda wildcards, input : ",".join(input.NORMbarcodes_fls),
 		#		NORMfeatures = lambda wildcards, input : ",".join(input.NORMfeatures_fls),
 		#		NORMmtx = lambda wildcards, input : ",".join(input.NORMmtx_fls),
-		GID = lambda wildcards: wildcards.gid,
+		GID = lambda wildcards: wildcards.xid,
 		REG = lambda wildcards: wildcards.region
 	conda:
 		"workflow/envs/seurat.yaml"
@@ -378,6 +436,23 @@ rule RNA_norm_merge_group:
 		"{input.mtx} "
 		#"{params.UMIbarcodes} {params.UMIfeatures} {params.UMImtx} "
 		#"{params.NORMbarcodes} {params.NORMfeatures} {params.NORMmtx} "
+		"{params.GID} {params.REG} {output.mtx}"
+
+rule RNA_norm_merge_contrast:
+	input:
+		src = ["workflow/scripts/norm_merge.R", "workflow/src/10Xmat.R"],
+		mtx = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+	output:
+		mtx = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{fl}", fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"])
+	params:
+		GID = lambda wildcards: wildcards.cid,
+		REG = lambda wildcards: wildcards.region
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} "
+		"{input.mtx} "
 		"{params.GID} {params.REG} {output.mtx}"
 
 ### Integration
@@ -392,6 +467,26 @@ rule RNA_int_harmony_group:
 		fls = expand("out/dim/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
 	params:
 		GID = lambda wildcards: wildcards.gid,
+		REG = lambda wildcards: wildcards.region
+	shell:
+		'set +eu '
+		' && . $(conda info --base)/etc/profile.d/conda.sh '
+		' && conda activate envs/harmony '
+		" && $CONDA_PREFIX/bin/Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {input.pca} {params.GID} {params.REG} {output.fls}"
+
+rule RNA_int_harmony_contrast:
+	input:
+		#NOTE: Shall we correct for group in harmony? Hence individual script for it. See prev rule src
+		src = ["workflow/scripts/int_harmony_group.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+		pca = expand("out/dim/Contrasts/{{cid}}/{{region}}/logNormSCT_PCA_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
+	output:
+		fls = expand("out/dim/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
+	params:
+		GID = lambda wildcards: wildcards.cid,
 		REG = lambda wildcards: wildcards.region
 	shell:
 		'set +eu '
@@ -421,21 +516,138 @@ rule RNA_clust_harmony_group:
 		"Rscript --vanilla "
 		"{input.src[0]} {input.umi} {input.sct} {input.harmony} {params.GID} {params.REG} {params.res} {params.red} {output.fls}"
 
-### Communication
-rule RNA_comm_prepare:
+#NOTE: depcreated: annotation is propagated from integrated 2-group (contrasts)
+##rule RNA_clust_subclust_group:
+##	input:
+##		src = ["workflow/scripts/clust_subclust.R", "workflow/src/10Xmat.R"],
+##		umi = expand("out/data2/Groups/{{gid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+##		sct = expand("out/norm/Groups/{{gid}}/{{region}}/logNormSCT_{fl}", 
+##				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+##		harmony = expand("out/dim/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"]),
+##		graph = expand("out/clust/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["GraphNN.rds", "GraphSNN.rds"])
+##	output:
+##		fls = expand("out/ann/Groups/{{gid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["barcodes.tsv", "vis.pdf"]),
+##	params:
+##		GID = lambda wildcards: wildcards.gid,
+##		REG = lambda wildcards: wildcards.region,
+##		#res = RNA_getSeuratClustParams_FROMgroup,
+##		res = "0.5",
+##		red = "harmony"
+##	conda:
+##		"workflow/envs/seurat.yaml"
+##	shell:
+##		"Rscript --vanilla "
+##		"{input.src[0]} {input.umi} {input.sct} {input.harmony} {input.graph} {params.GID} {params.REG} {params.res} {params.red} {output.fls}"
+
+rule RNA_clust_harmony_contrast:
 	input:
-		src = ["workflow/scripts/comm_prepare.R", "workflow/src/10Xmat.R"],
-		mtx = expand("out/norm/Samples/{{id}}/{{region}}/logNormSCT_{suffix}", suffix=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+		src = ["workflow/scripts/clust_SNN.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+		harmony = expand("out/dim/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"])
 	output:
-		fls = expand("out/comm/Samples/{{id}}/{{region}}/cellphonedb_{suffix}", suffix=["meta.txt", "count.txt"])
+		fls = expand("out/clust/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["GraphNN.rds", "GraphSNN.rds", "Idents.tsv"])
 	params:
-		ID = lambda wildcards: wildcards.id,
-		ANN = "Annotation.Level.1"
+		GID = lambda wildcards: wildcards.cid,
+		REG = lambda wildcards: wildcards.region,
+		res = RNA_getSeuratClustParams_FROMgroup,
+		red = "harmony"
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {input.harmony} {params.GID} {params.REG} {params.res} {params.red} {output.fls}"
+
+rule RNA_clust_subclust_contrast:
+	input:
+		src = ["workflow/scripts/clust_subclust.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		sct = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["barcodes.tsv", "features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+		harmony = expand("out/dim/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"]),
+		graph = expand("out/clust/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["GraphNN.rds", "GraphSNN.rds"])
+	output:
+		fls = expand("out/ann/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["barcodes.tsv", "vis.pdf"]),
+	params:
+		GID = lambda wildcards: wildcards.cid,
+		REG = lambda wildcards: wildcards.region,
+		#res = RNA_getSeuratClustParams_FROMcontrast,
+		res = "0.1",
+		red = "harmony"
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.sct} {input.harmony} {input.graph} {params.GID} {params.REG} {params.res} {params.red} {output.fls}"
+
+
+rule RNA_ann_sample:
+	input:
+		src = ["workflow/scripts/ann_sample.R", "workflow/src/10Xmat.R"],
+		norm = "out/norm/Samples/{id}/{region}/logNormSCT_barcodes.tsv", 
+#		ann = getAnnFile_FROMsample
+		ann = "out/ann/Contrasts/old-young/{region}/logNormSCT_harmony_barcodes.tsv"
+	output:
+		mtx_1 = "out/ann/Samples/{id}/{region}/logNormSCT_harmony_barcodes.tsv",
 	conda:
 		"workflow/envs/rna_process.yaml"
 	shell:
 		"Rscript --vanilla "
-		"{input.src[0]} {input.mtx} {params.ID} {params.ANN} {output.fls}"
+		"{input.src[0]} {input.norm} {input.ann} {output.mtx_1}"
+
+rule RNA_ann_group:
+	input:
+		src = ["workflow/scripts/ann_sample.R", "workflow/src/10Xmat.R"],
+		norm = "out/norm/Groups/{gid}/{region}/logNormSCT_barcodes.tsv", 
+#		ann = getAnnFile_FROMsample
+		ann = "out/ann/Contrasts/old-young/{region}/logNormSCT_harmony_barcodes.tsv"
+	output:
+		mtx_1 = "out/ann/Groups/{gid}/{region}/logNormSCT_harmony_barcodes.tsv",
+	conda:
+		"workflow/envs/rna_process.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.norm} {input.ann} {output.mtx_1}"
+
+### Communication
+#NOTE: Communication module is composed of two branches: 
+# - comm: classical cellphonedb runs and
+# - cpdb: single-sample cellphonedb runs followed by meta-analysis. 
+# Both finish with crosstalker # for a differential communication between 2-group.
+rule RNA_comm_prepare:
+	input:
+		src = ["workflow/scripts/comm_prepare.R", "workflow/src/10Xmat.R"],
+		#mtx = expand("out/norm/Samples/{{id}}/{{region}}/logNormSCT_{suffix}", suffix=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+		mtx_1 = "out/ann/Samples/{id}/{region}/logNormSCT_harmony_barcodes.tsv",
+		mtx_23 = expand("out/norm/Samples/{{id}}/{{region}}/logNormSCT_{suffix}", suffix=["features.tsv", "matrix.mtx"])
+	output:
+		fls = expand("out/comm/Samples/{{id}}/{{region}}/cellphonedb_{suffix}", suffix=["meta.txt", "count.txt"])
+	params:
+		ID = lambda wildcards: wildcards.id,
+		ANN = "Annotation.Level.2"
+	conda:
+		"workflow/envs/rna_process.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.mtx_1} {input.mtx_23} {params.ID} {params.ANN} {output.fls}"
+
+rule RNA_cpdb_prepare:
+	input:
+		src = ["workflow/scripts/comm_prepare.R", "workflow/src/10Xmat.R"],
+		#mtx = expand("out/norm/Samples/{{id}}/{{region}}/logNormSCT_{suffix}", suffix=["barcodes.tsv", "features.tsv", "matrix.mtx"])
+		mtx_1 = "out/ann/Groups/{gid}/{region}/logNormSCT_harmony_barcodes.tsv",
+		mtx_23 = expand("out/norm/Groups/{{gid}}/{{region}}/logNormSCT_{suffix}", suffix=["features.tsv", "data.mtx"])
+	output:
+		fls = expand("out/cpdb/Groups/{{gid}}/{{region}}/cellphonedb_{suffix}", suffix=["meta.txt", "count.txt"])
+	params:
+		ID = lambda wildcards: wildcards.gid,
+		ANN = "Annotation.Level.2"
+	conda:
+		"workflow/envs/rna_process.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.mtx_1} {input.mtx_23} {params.ID} {params.ANN} {output.fls}"
 
 #NOTE: implement cpdb params via yaml
 rule RNA_comm_cpdb:
@@ -449,6 +661,18 @@ rule RNA_comm_cpdb:
 		"workflow/envs/cpdb.yaml"
 	shell:
 		"cellphonedb method statistical_analysis {input.fls} --iterations=100 --threshold=0.3 --counts-data=hgnc_symbol --output-path={params.outdir}"
+
+rule RNA_cpdb_cpdb:
+	input:
+		fls = expand("out/cpdb/Groups/{{gid}}/{{region}}/cellphonedb_{suffix}", suffix=["meta.txt", "count.txt"])
+	output:
+		expand("out/cpdb/Groups/{{gid}}/{{region}}/{fl}", fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"])
+	params:
+		outdir = lambda wildcards: "out/cpdb/Groups/"+wildcards.gid+"/"+wildcards.region+"/"
+	conda:
+		"workflow/envs/cpdb.yaml"
+	shell:
+		"cellphonedb method statistical_analysis {input.fls} --iterations=1000 --threshold=0.3 --counts-data=hgnc_symbol --output-path={params.outdir}"
 
 rule RNA_comm_merge:
 	input:
@@ -496,6 +720,20 @@ rule RNA_comm_combineSignif:
 		"Rscript --vanilla "
 		"{input.src} {input.fls} {output.fls}"
 
+#NOTE: eq to RNA_comm_combineSignif
+rule RNA_cpdb_idx2cluster:
+	input:
+		src = "workflow/scripts/comm_getIdx2cluster.R",
+		fl = "out/cpdb/Groups/{gid}/{region}/significant_means.txt"
+	output:
+		fls = ["out/cpdb/Groups/{gid}/{region}/significant_means.tsv",
+			"out/cpdb/Groups/{gid}/{region}/idx2cluster.tsv"]
+	conda:
+		"workflow/envs/rna_process.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src} {input.fl} {output.fls}"
+
 rule RNA_comm_cpdb2crosstalker:
 	input:
 		src = "workflow/scripts/comm_CPDB2CrossTalker.py",
@@ -503,6 +741,19 @@ rule RNA_comm_cpdb2crosstalker:
 			"out/comm/Groups/{gid}/{region}/idx2cluster.tsv"]
 	output:
 		fl = "out/comm/Groups/{gid}/{region}/filtered_corrected.csv"
+	conda:
+		"workflow/envs/cpdb.yaml"
+	shell:
+		"python "
+		"{input.src} {input.fls} {output.fl}"
+
+rule RNA_cpdb_cpdb2crosstalker:
+	input:
+		src = "workflow/scripts/comm_CPDB2CrossTalker.py",
+		fls = ["out/cpdb/Groups/{gid}/{region}/significant_means.tsv",
+			"out/cpdb/Groups/{gid}/{region}/idx2cluster.tsv"]
+	output:
+		fl = "out/cpdb/Groups/{gid}/{region}/filtered_corrected.csv"
 	conda:
 		"workflow/envs/cpdb.yaml"
 	shell:
@@ -530,7 +781,28 @@ rule RNA_comm_crosstalker:
 		" && $CONDA_PREFIX/bin/Rscript --vanilla "
 		"{input.src} {params.fls} {params.comparison} {params.suffix} {output.outdir}"
 
-	
+rule RNA_cpdb_crosstalker:
+	input:
+		src = "workflow/scripts/comm_CrossTalker.R",
+		fls = getINPUT2_CrossTalker
+	output:
+		outdir = directory("out/cpdb/Contrasts/{cid}/{region}/crosstalker/"),
+		reports = expand("out/cpdb/Contrasts/{{cid}}/{{region}}/crosstalker/{prefix}_{{cid}}_{{region}}.html", prefix=["Single", "Comparative"]),
+		dat = "out/cpdb/Contrasts/{cid}/{region}/crosstalker/data_{cid}_{region}.rds"
+	params:
+		#suffix = lambda wildcards, output : re.sub("Single_","",os.path.splitext(os.path.basename(output.reports[0]))),
+		suffix = lambda wildcards: wildcards.cid+"_"+wildcards.region,
+		comparison = lambda wildcards: wildcards.cid,
+		fls = lambda wildcards, input : ",".join(input.fls),
+	shell:
+		'set +eu '
+		' && (test -d {output.outdir} || mkdir -p {output.outdir}) '
+		' && . $(conda info --base)/etc/profile.d/conda.sh '
+		' && conda activate envs/crosstalker '
+		" && $CONDA_PREFIX/bin/Rscript --vanilla "
+		"{input.src} {params.fls} {params.comparison} {params.suffix} {output.outdir}"
+
+
 ### pseudobulk testing
 rule RNA_pseudobulk_dge:
 	input:

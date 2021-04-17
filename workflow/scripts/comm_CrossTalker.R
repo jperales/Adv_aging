@@ -30,6 +30,11 @@ if(!grepl("/$", OUTDIR)) OUTDIR <- paste0(OUTDIR,"/");
 stopifnot(length(INPUT)==length(GROUPS))
 names(INPUT) <- GROUPS
 
+cat("[INFO] : Inverting paths so second group is CONTROL: \n", file=stdout())
+INPUT <- rev(INPUT)
+GROUPS <- rev(GROUPS)
+
+
 ## Print internal variables
 cat("[INFO] : Print internal variables: \n", file=stdout())
 for(i in setdiff(ls(), "args")) {
