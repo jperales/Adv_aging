@@ -17,7 +17,7 @@ args <- commandArgs(TRUE)
 # 	  "./out/comm/Samples/O.F.1/CA/cellphonedb_meta.txt",
 # 	  "./out/comm/Samples/O.F.1/CA/cellphonedb_count.txt"
 # 	  )
-# 
+ 
 # INPUT
 INPUT_colData <- args[1]
 INPUT_rowData <- args[2]
@@ -57,6 +57,11 @@ cat(paste0("[INFO] : Showing columns used for CellPhoneDB for cell metadata:\n",
 	   "\t Cluster: ", meta_idx,"\n",
 	   "---\n"),
     file=stdout())
+
+## Drop EPI
+idx <- which(colDat[, meta_idx]!= "EPI")
+colDat <- colDat[idx, ]
+mat <- mat[, colDat[, cellID_idx]]
 
 ## Write new data
 # Format, source: https://www.cellphonedb.org/faq-and-troubleshooting#extract-cellphonedb-files-from-seurat 
