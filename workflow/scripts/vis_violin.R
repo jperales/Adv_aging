@@ -63,6 +63,7 @@ if(!dir.exists(OUTDIR)) dir.create(OUTDIR, recursive=TRUE);
 figDim <- getFIGdim(length(query), length(unique(S@meta.data[, ann])))
 if(figOUT=="png") png(OUTPUT, width = figDim[1], height = figDim[2], units = "in", res = 300);
 if(figOUT=="pdf") pdf(OUTPUT, width = figDim[1], height = figDim[2], compress=FALSE);
+if(figOUT=="tiff") tiff(OUTPUT, width = figDim[1], height = figDim[2], units = "in", compression="none", res = 300);
 
 # Make it
 gg <- VlnPlot(S, feature=query, group.by=ann, split.by="Group", 

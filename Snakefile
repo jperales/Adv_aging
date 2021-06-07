@@ -252,7 +252,7 @@ rule all:
 		expand("out/cpdb/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
 		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
 		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
-		expand("out/report/{cid}/{query}/violin_{cid}_{region}.{ext}", cid=CIDS, region=["AA", "CA"], ext=["pdf", "png"], query=QUERIES)
+		expand("out/report/{cid}/{query}/violin_{cid}_{region}.{ext}", cid=CIDS, region=["AA", "CA"], ext=["pdf", "png", "tiff"], query=QUERIES)
 
 #		dynamic(
 #			expand("out/minibulk/Contrasts/{cid}/{region}/{{cluster}}_{suffix}",
