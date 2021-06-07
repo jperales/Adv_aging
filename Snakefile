@@ -244,16 +244,16 @@ rule all:
 #		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
 #		expand("out/comm/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
 
-##		expand("out/cpdb/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
-		expand("out/cpdb/Groups/{gid}/{region}/cellphonedb_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
-##		expand("out/cpdb/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
-		expand("out/cpdb/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
-		expand("out/cpdb/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["significant_means.tsv", "idx2cluster.tsv"]),
-		expand("out/cpdb/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
-		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
-		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
-		expand("out/report/{cid}/{query}/violin_{cid}_{region}.{ext}", cid=CIDS, region=["AA", "CA"], ext=["pdf", "png", "tiff"], query=QUERIES)
-
+###		expand("out/cpdb/Samples/{id}/{region}/cellphonedb_{suffix}", id=SIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
+#		expand("out/cpdb/Groups/{gid}/{region}/cellphonedb_{suffix}", gid=GIDS, region=["AA", "CA"], suffix=["meta.txt", "count.txt"]),
+###		expand("out/cpdb/Samples/{id}/{region}/{fl}", id=SIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
+#		expand("out/cpdb/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["deconvoluted.txt", "means.txt", "pvalues.txt", "significant_means.txt"]),
+#		expand("out/cpdb/Groups/{gid}/{region}/{fl}", gid=GIDS, region=["AA", "CA"], fl=["significant_means.tsv", "idx2cluster.tsv"]),
+#		expand("out/cpdb/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
+#		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
+#		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
+		expand("out/report/{cid}/{query}/violin_{cid}_{region}.{ext}", cid=CIDS, region=["AA", "CA"], ext=["pdf", "png", "tiff"], query=QUERIES),
+		expand("out/export/SeuratObject/Zhang2020_AgingArteryAtlasCynomolgusMonkey_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"])
 #		dynamic(
 #			expand("out/minibulk/Contrasts/{cid}/{region}/{{cluster}}_{suffix}",
 #				cid=CIDS,
@@ -845,4 +845,28 @@ rule vis_vlnplot:
 	shell:
 		"Rscript --vanilla "
 		"{input.src[0]} {input.barcodes} {input.norm_mtx} {params.ds} {params.query} {params.ann} {params.figOUT} {output}"
+
+### Export
+rule exp_seuratobj:
+	input:
+		src = ["workflow/scripts/export_seurat.R", "workflow/src/10Xmat.R"],
+		umi = expand("out/data2/Contrasts/{{cid}}/{{region}}/{fl}", fl=["barcodes.tsv", "features.tsv", "matrix.mtx"]),
+		#NOTE: annotated barcodes replaces barcodes of norm data
+		barcodes = "out/ann/Contrasts/{cid}/{region}/logNormSCT_harmony_barcodes.tsv",
+		sct = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{fl}", 
+				fl=["features.tsv", "counts.mtx", "data.mtx", "scaled.tsv", "HGV.txt"]),
+		harmony = expand("out/dim/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["embeddings.tsv", "loadings.tsv", "projected.tsv", "stdev.txt", "nPCs.txt"]),
+		graph = expand("out/clust/Contrasts/{{cid}}/{{region}}/logNormSCT_harmony_{suffix}", suffix=["GraphNN.rds", "GraphSNN.rds"])
+	output:
+		fl = "out/export/SeuratObject/Zhang2020_AgingArteryAtlasCynomolgusMonkey_{cid}_{region}.rds"
+	params:
+		GID = lambda wildcards: wildcards.cid,
+		REG = lambda wildcards: wildcards.region,
+		red = "harmony"
+
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.umi} {input.barcodes} {input.sct} {input.harmony} {input.graph} {params.GID} {params.REG} {params.red} {output.fl}"
 
