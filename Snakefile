@@ -7,6 +7,11 @@ import yaml
 import pandas as pd
 import numpy as np
 
+#--- Gene Queries
+#QUERIES = open("query.txt", 'r').read().splitlines()
+QUERIES = ["PDGFRA"]
+
+
 #--- Index
 ### Samples
 SAMPLES = glob.glob("index/Samples/*.yaml")
@@ -247,6 +252,7 @@ rule all:
 		expand("out/cpdb/Groups/{gid}/{region}/filtered_corrected.csv", gid=GIDS, region=["AA", "CA"]),
 		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.html", cid=CIDS, region=["AA", "CA"], prefix=["Single", "Comparative"]),
 		expand("out/cpdb/Contrasts/{cid}/{region}/crosstalker/{prefix}_{cid}_{region}.rds", cid=CIDS, region=["AA", "CA"], prefix=["data"]),
+		expand("out/report/{cid}/{query}/violin_{cid}_{region}.{ext}", cid=CIDS, region=["AA", "CA"], ext=["pdf", "png"], query=QUERIES)
 
 #		dynamic(
 #			expand("out/minibulk/Contrasts/{cid}/{region}/{{cluster}}_{suffix}",
@@ -820,4 +826,23 @@ rule RNA_pseudobulk_dge:
 	shell:
 		"Rscript --vanilla "
 		"{input.src} {input.cnt} {input.trg} {params.comparison} {output}"
+
+### Visualization
+rule vis_vlnplot:
+	input:
+		src = ["workflow/scripts/vis_violin.R", "workflow/src/10Xmat.R"],
+		barcodes = "out/ann/Contrasts/{cid}/{region}/logNormSCT_harmony_barcodes.tsv",
+		norm_mtx = expand("out/norm/Contrasts/{{cid}}/{{region}}/logNormSCT_{suffix}", suffix=["features.tsv", "counts.mtx", "data.mtx"])
+	output:
+		"out/report/{cid}/{query}/violin_{cid}_{region}.{ext}"
+	params:
+		ds = lambda wildcards: wildcards.cid,
+		query = lambda wildcards: wildcards.query,
+		ann = "Annotation.Level.2",
+		figOUT = lambda wildcards: wildcards.ext
+	conda:
+		"workflow/envs/seurat.yaml"
+	shell:
+		"Rscript --vanilla "
+		"{input.src[0]} {input.barcodes} {input.norm_mtx} {params.ds} {params.query} {params.ann} {params.figOUT} {output}"
 
